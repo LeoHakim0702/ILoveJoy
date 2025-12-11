@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>Joy & Hakim's Weekend</title>
+    <style>
+        :root {
+            /* 莫蘭迪配色系統 */
+            --m-blue: #5A7D9A;
+            --m-red: #D67B7B;
+            --m-yellow: #E4C788;
+            --bg-body: #f7f8fa;
+            --bg-card: #ffffff;
+            --text-main: #2c3e50;
+            --text-sub: #7f8c8d;
+            --radius-main: 24px;
+            --safe-top: env(safe-area-inset-top, 20px);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+            --tab-height: 85px;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: var(--bg-body);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* 歡迎頁動畫 */
+        #welcomePage {
+            position: fixed; inset: 0; z-index: 9999;
+            background: linear-gradient(135deg, #fff1eb 0%, #ace0f9 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 40px;
+            transition: opacity 0.6s ease-out, visibility 0.6s;
+        }
+        #welcomePage.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .welcome-title { font-size: 32px; font-weight: 800; color: var(--m-blue); margin-bottom: 10px; opacity: 0; transform: translateY(20px); animation: fadeInUp 0.8s ease forwards; }
+        .welcome-sub { font-size: 16px; color: var(--m-red); letter-spacing: 2px; text-transform: uppercase; opacity: 0; transform: translateY(20px); animation: fadeInUp 0.8s ease 0.3s forwards; }
+        .enter-btn { margin-top: 60px; padding: 15px 40px; background: white; color: var(--m-blue); border: none; border-radius: 30px; font-size: 16px; font-weight: 600; box-shadow: 0 10px 30px rgba(90, 125, 154, 0.2); opacity: 0; transform: translateY(20px); animation: fadeInUp 0.8s ease 0.6s forwards; cursor: pointer; }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+        /* App 佈局 */
+        .app-layout { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; background-color: var(--bg-body); }
+        .header { padding: calc(var(--safe-top) + 20px) 25px 10px; background: transparent; flex-shrink: 0; z-index: 10; }
+        .header h1 { font-size: 28px; font-weight: 800; margin: 0; color: var(--text-main); }
+        .header p { font-size: 13px; color: var(--m-red); margin-top: 4px; font-weight: 600; letter-spacing: 1px; }
+
+        /* 滾動容器 */
+        .scroll-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 20px; padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 20px); }
+        .day-view { display: none; }
+        .day-view.active { display: block; animation: fadeScaleIn 0.3s ease-out; }
+        @keyframes fadeScaleIn { from { opacity: 0; transform: scale(0.99); } to { opacity: 1; transform: scale(1); } }
+
+        /* 卡片設計 */
+        .card { background: var(--bg-card); border-radius: var(--radius-main); padding: 22px; margin-bottom: 20px; box-shadow: 0 10px 30px -10px rgba(50, 50, 93, 0.08); position: relative; overflow: hidden; transition: transform 0.2s; }
+        .card:active { transform: scale(0.97); }
+        .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
+        .type-chill::before { background: var(--m-blue); }
+        .type-food::before { background: var(--m-red); }
+        .type-cat::before { background: var(--m-yellow); }
+        .time-tag { font-size: 12px; font-weight: 700; color: #b0b0b0; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        .card-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-main); }
+        .card-desc { font-size: 14px; color: var(--text-sub); line-height: 1.5; }
+        .more-indicator { font-size: 12px; color: var(--m-blue); margin-top: 12px; font-weight: 600; display: flex; align-items: center; }
+        .more-indicator::after { content: '→'; margin-left: 4px; }
+
+        /* 底部導航 */
+        .tab-bar { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--tab-height) + var(--safe-bottom)); background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: flex; justify-content: space-around; padding-top: 15px; padding-bottom: var(--safe-bottom); border-top: 1px solid rgba(0,0,0,0.05); z-index: 50; }
+        .tab { text-align: center; color: #c0c0c0; font-size: 11px; font-weight: 600; transition: all 0.3s; }
+        .tab.active { color: var(--m-blue); transform: translateY(-4px); }
+        .tab-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+
+        /* 詳情頁 Modal */
+        .modal { position: fixed; inset: 0; z-index: 100; background: #fff; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.165, 0.84, 0.44, 1); display: flex; flex-direction: column; }
+        .modal.open { transform: translateY(0); }
+        .modal-header { padding: calc(var(--safe-top) + 15px) 20px 10px; display: flex; justify-content: flex-end; background: #fff; flex-shrink: 0; }
+        .close-btn { background: #f5f5f5; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; color: #333; display: flex; align-items: center; justify-content: center; }
+        .modal-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 20px 40px; padding-bottom: calc(var(--safe-bottom) + 40px); }
+
+        /* 詳情頁內容 */
+        .detail-img-container { width: 100%; height: 240px; border-radius: 20px; overflow: hidden; margin-bottom: 20px; background: #eee; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .detail-img { width: 100%; height: 100%; object-fit: cover; }
+        .detail-title { font-size: 24px; font-weight: 800; margin-bottom: 15px; color: var(--text-main); line-height: 1.3; }
+        
+        /* 新增的信息標籤樣式 */
+        .info-tags { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .info-pill { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .pill-price { background: #f0f7ff; color: var(--m-blue); }
+        .pill-food { background: #fff5f5; color: var(--m-red); }
+        
+        .detail-info { font-size: 15px; color: var(--text-main); line-height: 1.7; margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 16px; }
+        .detail-address { font-size: 13px; color: var(--text-sub); margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+
+        .nav-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 16px; margin-bottom: 12px; background: var(--m-blue); color: white; border-radius: 16px; font-weight: 600; font-size: 16px; border: none; box-shadow: 0 8px 20px -6px rgba(90, 125, 154, 0.4); }
+        .nav-btn.secondary { background: #e8edf2; color: var(--m-blue); box-shadow: none; border: 1px solid rgba(90, 125, 154, 0.2); }
+
+        .option-item { background: white; border: 1px solid #f0f0f0; border-radius: 18px; padding: 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+        .option-item:active { background: #f9f9f9; transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+<div id="welcomePage">
+    <div class="welcome-title">Welcome to<br>Joy & Hakim's</div>
+    <div class="welcome-sub">Romantic Weekend Escape</div>
+    <button class="enter-btn" onclick="enterApp()">Start the Journey ✨</button>
+</div>
+
+<div class="app-layout">
+    <div class="header">
+        <h1>Itinerary</h1>
+        <p>Dec 12 - 14 • Kuala Lumpur 🇲🇾</p>
+    </div>
+
+    <div class="scroll-container">
+        <div id="day0" class="day-view">
+            <div class="card type-chill" onclick="showDetail('arrival')">
+                <span class="time-tag">21:00</span>
+                <div class="card-title">✈️ 降落 KLIA2</div>
+                <div class="card-desc">甜蜜週末正式開始。拿上行李，準備出發！</div>
+            </div>
+            <div class="card type-chill" onclick="showDetail('hotel_stripes_checkin')">
+                <span class="time-tag">21:30</span>
+                <div class="card-title">🚗 入住：Hotel Stripes KL</div>
+                <div class="card-desc">我們今明兩晚的家。享受 Autograph Collection 的服務吧！</div>
+            </div>
+            <div class="card type-chill" onclick="showDetail('netflix')">
+                <span class="time-tag">23:00</span>
+                <div class="card-title">🍿 Netflix & Chill</div>
+                <div class="card-desc">在舒適的房間裡，只有我們兩個。點個宵夜，看場電影，抱抱睡覺。</div>
+            </div>
+        </div>
+
+        <div id="day1" class="day-view active">
+            <div class="card type-chill" onclick="showDetail('art_gallery')">
+                <span class="time-tag">10:00</span>
+                <div class="card-title">🎨 國家美術館漫步</div>
+                <div class="card-desc">感受吉隆坡的藝術氣息，建築本身就很美，適合牽手慢慢逛。</div>
+                <div class="more-indicator">查看詳情</div>
+            </div>
+            <div class="card type-food" onclick="showDetail('malai_thai_lunch')">
+                <span class="time-tag">12:45</span>
+                <div class="card-title">🍽️ Malai Thai Cuisine 午餐</div>
+                <div class="card-desc">與 Dr.Taufiq, Marissa 和 Amal 的泰式午餐約會。</div>
+                <div class="more-indicator">查看詳情及備選方案</div>
+            </div>
+            <div class="card type-cat" onclick="showList('cat_cafes', '🐈 貓咪天堂 (5選1)')">
+                <span class="time-tag">15:00</span>
+                <div class="card-title">🐈 貓咪天堂 Time</div>
+                <div class="card-desc">知道你最喜歡貓咪了！這裡整理了全吉隆坡最好的5家貓咖，我們去哪家？</div>
+                <div class="more-indicator">點擊挑選喵星人</div>
+            </div>
+            <div class="card type-food" onclick="showDetail('dinner_alva')">
+                <span class="time-tag">19:00</span>
+                <div class="card-title">🥂 Alva KL 雲端晚餐</div>
+                <div class="card-desc">99層高空，面對雙子塔。今晚是屬於我們的浪漫時刻。(已預訂)</div>
+                <div class="more-indicator">查看含備選方案</div>
+            </div>
+        </div>
+
+        <div id="day2" class="day-view">
+             <div class="card type-chill" onclick="showDetail('paramount')">
+                <span class="time-tag">10:00</span>
+                <div class="card-title">🥞 Hipster 街區早餐</div>
+                <div class="card-desc">去 Taman Paramount 吃地道早餐，或者喝冠軍咖啡。</div>
+            </div>
+            <div class="card type-cat" onclick="showDetail('spring_cat')">
+                <span class="time-tag">11:00</span>
+                <div class="card-title">🌿 Spring Spring 貓咖</div>
+                <div class="card-desc">就在復古街區裡的日系貓咖，逛累了可以進去擼擼貓。</div>
+            </div>
+            <div class="card type-chill" onclick="showList('vintage_shops', '👗 Vintage Shop Hunting')">
+                <span class="time-tag">12:00</span>
+                <div class="card-title">👗 Vintage Shop Hunting</div>
+                <div class="card-desc">幫你挑幾件好看的復古衣服！這裡有 5 家最好的店，我們一家家逛。</div>
+                <div class="more-indicator">查看店鋪列表</div>
+            </div>
+            <div class="card type-chill" onclick="showDetail('airport')">
+                <span class="time-tag">16:00</span>
+                <div class="card-title">🛫 前往機場</div>
+                <div class="card-desc">帶著滿滿的回憶回家。愛你！❤️</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab" onclick="switchDay(0, this)"><span class="tab-icon">🌙</span> Fri</div>
+        <div class="tab active" onclick="switchDay(1, this)"><span class="tab-icon">✨</span> Sat</div>
+        <div class="tab" onclick="switchDay(2, this)"><span class="tab-icon">☀️</span> Sun</div>
+    </div>
+</div>
+
+<div id="detailModal" class="modal">
+    <div class="modal-header">
+        <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-content" id="modalContent"></div>
+</div>
+
+<script>
+    function enterApp() { document.getElementById('welcomePage').classList.add('hidden'); }
+
+    // === 核心數據 (已更新穩定圖片鏈接和英文信息) ===
+    const data = {
+        'arrival': {
+            title: "KLIA 2 Arrival",
+            img: "https://images.unsplash.com/photo-1575225103649-74d6c44243b7?q=80&w=800&auto=format&fit=crop", // Airport
+            price: "Grab ~RM 75",
+            special: "Level 1 for Grab",
+            desc: "抵達後，請跟隨指示牌前往 Level 1 的 Grab 上車點 (Door 5 is usually less crowded).",
+            address: "Kuala Lumpur International Airport 2",
+            map: "KLIA2"
+        },
+        'hotel_stripes_checkin': {
+            title: "Hotel Stripes KL, Autograph Collection",
+            img: "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?q=80&w=800&auto=format&fit=crop", // Luxury Hotel
+            price: "Checked In",
+            special: "Rooftop Infinity Pool",
+            desc: "A chic, modern hotel in the Chow Kit area. The rooftop pool view is stunning, facing the KL Tower directly.",
+            address: "25 Jalan Kamunting, Chow Kit, 50300 Kuala Lumpur",
+            map: "Hotel Stripes Kuala Lumpur, Autograph Collection"
+        },
+        'netflix': {
+            title: "Netflix & Chill",
+            img: "https://images.unsplash.com/photo-1595769816263-9b910be24d5f?q=80&w=800&auto=format&fit=crop", // Cozy Room
+            price: "Free",
+            special: "Cuddles & Snacks",
+            desc: "No plans needed. Just us, a soft bed, and a good movie. 完美週末的第一晚。",
+            address: "Hotel Stripes Room",
+            map: null
+        },
+        'art_gallery': {
+            title: "National Art Gallery",
+            img: "https://images.unsplash.com/photo-1518998053901-5348d3969105?q=80&w=800&auto=format&fit=crop", // Gallery
+            price: "Free Entry",
+            special: "Spiral Architecture",
+            desc: "Balai Seni Negara. The architecture itself is art, featuring a unique spiral ramp similar to the Guggenheim. Great for photos.",
+            address: "2, Jalan Temerloh, Titiwangsa",
+            map: "National Art Gallery Malaysia"
+        },
+        'malai_thai_lunch': {
+            title: "Malai Thai Cuisine",
+            img: "https://images.unsplash.com/photo-1559314809-0d155014e29e?q=80&w=800&auto=format&fit=crop", // Thai Food
+            price: "RM 40 - 60 / pax",
+            special: "Red Curry, Mango Sticky Rice",
+            desc: "Lunch with Dr.Taufiq, Marissa & Amal. A refined Thai restaurant known for authentic flavors.",
+            address: "Ground Floor, Menara Ample West, 6, Jalan P. Ramlee",
+            map: "Malai Thai Cuisine",
+            planB: { name: "Plan B: Other Lunch Options", listKey: "lunch_options" }
+        },
+        'dinner_alva': {
+            title: "Alva KL (99th Floor)",
+            img: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=800&auto=format&fit=crop", // Cocktail/View
+            price: "RM 150+ / pax",
+            special: "Seared Scallops, Cocktails",
+            desc: "Our main event! 99th floor dining with an unblocked view of the Twin Towers. (Smart Casual attire required).",
+            address: "Level 99, Ascott Star KLCC",
+            map: "Alva KL",
+            planB: { name: "Plan B: Satellite Restaurant (Level 53)", map: "Satellite Restaurant & Bar Imperial Lexis KL" }
+        },
+        'paramount': {
+            title: "Taman Paramount",
+            img: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=800&auto=format&fit=crop", // Hotel/Cafe vibes
+            price: "RM 20 - 40 / pax",
+            special: "Vintage Vibes, Local Coffee",
+            desc: "A matured neighborhood turned hipster hub. Parking near 'Awesome Canteen'. Great for breakfast.",
+            address: "Jalan 20/13, Taman Paramount",
+            map: "Awesome Canteen Taman Paramount"
+        },
+        'spring_cat': {
+            title: "Spring Spring Cafe",
+            img: "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?q=80&w=800&auto=format&fit=crop", // Cat
+            price: "RM 25 - 35 / pax",
+            special: "Matcha, Oolong, Cats",
+            desc: "A hidden, green, Japanese-style cat cafe on the first floor. Very zen and clean.",
+            address: "61A, Jalan 20/7, Taman Paramount",
+            map: "Spring Spring Cafe"
+        },
+        'airport': {
+            title: "KLIA 2 Departure",
+            img: "https://images.unsplash.com/photo-1436491865332-7a61a109a392?q=80&w=800&auto=format&fit=crop", // Plane
+            price: "Priceless Memories",
+            special: "Safe Travels",
+            desc: "Remember to allow extra time for traffic on Sunday evenings. Have a safe flight back!",
+            address: "KLIA2 Departure Hall",
+            map: "KLIA2"
+        },
+        
+        // 列表數據 (同樣添加了 Price 和 Highlights)
+        'lunch_options': [
+            { name: "DC Restaurant", tag: "Michelin 1 Star", price: "RM 300+", special: "French Fine Dining", desc: "Chef Darren Chin's legendary spot in TTDI.", map: "DC Restaurant by Darren Chin" },
+            { name: "Sushi Masa", tag: "Michelin 1 Star", price: "RM 400+", special: "Omakase", desc: "Top-tier Edomae sushi, ingredients flown from Japan.", map: "Sushi Masa Kuala Lumpur" },
+            { name: "Entier French Dining", tag: "Michelin Selected", price: "RM 150+", special: "Nose-to-Tail French", desc: "Casual fine dining with great views at Alila Bangsar.", map: "Entier French Dining" }
+        ],
+        'cat_cafes': [
+            { name: "Coo & Riku", tag: "Largest Chain", price: "RM 30 Entry", special: "Many Breeds", desc: "Japan's largest cat cafe chain @ LaLaport.", map: "Coo & Riku LaLaport BBCC" },
+            { name: "Monster. A Garden", tag: "Most Aesthetic", price: "RM 20 Entry", special: "Garden Vibe", desc: "Very instagrammable, surrounded by plants.", map: "Monster. A Garden Cafe" },
+            { name: "Mao Catfe", tag: "Premium Cats", price: "RM 30 Entry", special: "Mainecoons", desc: "Home to giant, fluffy Mainecoons & Ragdolls.", map: "Mao Catfe" },
+            { name: "Poppy Kat", tag: "Hipster", price: "RM 25 (Food)", special: "Croffles", desc: "Retro orange decor, great food & coffee.", map: "Poppy Kat" },
+            { name: "Purradise", tag: "Ethical", price: "RM 21 (Hour)", special: "Rescues", desc: "Support adoption. Cats are very friendly.", map: "Purradise Cat Cafe" }
+        ],
+        'vintage_shops': [
+            { name: "FIFTH", tag: "Landmark", price: "RM 50 - 200", special: "Curated Mix", desc: "The biggest shop here, wide selection.", map: "FIFTH Taman Paramount" },
+            { name: "Del'cs Retail", tag: "Y2K", price: "RM 50 - 150", special: "Colorful/Pop", desc: "Gen-Z favorites, colorful and trendy.", map: "Del'cs Retail" },
+            { name: "Udou", tag: "Japanese", price: "RM 80 - 200", special: "Workwear", desc: "Clean, organized, Japanese unisex style.", map: "Udou vintage" },
+            { name: "Slowvows", tag: "Romantic", price: "RM 100+", special: "Lace/Silk", desc: "Hidden gem for feminine vintage pieces.", map: "Slowvows" },
+            { name: "Awesome Canteen", tag: "Food & Antiques", price: "RM 30+", special: "Paleo Burgers", desc: "Eat amidst vintage typewriters and furniture.", map: "Awesome Canteen" }
+        ]
+    };
+
+    // === 邏輯控制 ===
+    function switchDay(index, el) {
+        document.querySelectorAll('.day-view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.day-view')[index].classList.add('active');
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+        document.querySelector('.scroll-container').scrollTop = 0;
+    }
+
+    function closeModal() {
+        document.getElementById('detailModal').classList.remove('open');
+        setTimeout(() => { document.getElementById('modalContent').innerHTML = ''; }, 300);
+    }
+
+    function navigateTo(dest) {
+        const query = encodeURIComponent(dest);
+        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    }
+
+    function showDetail(key) {
+        const item = data[key];
+        const container = document.getElementById('modalContent');
+        
+        let buttonsHtml = '';
+        if (item.map) buttonsHtml += `<button class="nav-btn" onclick="navigateTo('${item.map}')">📍 導航前往</button>`;
+        if (item.planB) {
+            if (item.planB.map) {
+                buttonsHtml += `<button class="nav-btn secondary" onclick="navigateTo('${item.planB.map}')">🔄 ${item.planB.name}</button>`;
+            } else if (item.planB.listKey) {
+                buttonsHtml += `<button class="nav-btn secondary" onclick="showList('${item.planB.listKey}', '備選方案')">📄 ${item.planB.name}</button>`;
+            }
+        }
+
+        // 新增：渲染 Price 和 Special 標籤
+        let infoTagsHtml = '';
+        if (item.price) infoTagsHtml += `<div class="info-pill pill-price">💰 ${item.price}</div>`;
+        if (item.special) infoTagsHtml += `<div class="info-pill pill-food">✨ ${item.special}</div>`;
+
+        container.innerHTML = `
+            <div class="detail-img-container">
+                <img class="detail-img" src="${item.img}" alt="${item.title}">
+            </div>
+            <div class="detail-title">${item.title}</div>
+            <div class="info-tags">${infoTagsHtml}</div>
+            <div class="detail-info">
+                ${item.desc}
+                <div class="detail-address">📍 ${item.address}</div>
+            </div>
+            <div class="btn-group">${buttonsHtml}</div>
+        `;
+        document.getElementById('detailModal').classList.add('open');
+    }
+
+    function showList(key, title) {
+        const list = data[key];
+        const container = document.getElementById('modalContent');
+        let html = `<div class="detail-title" style="font-size:22px">${title}</div><div style="margin-bottom:20px; color:var(--text-sub)">Tap items to navigate</div>`;
+        
+        list.forEach(item => {
+            html += `
+                <div class="option-item" onclick="navigateTo('${item.map}')">
+                    <div style="flex:1">
+                        <div style="display:flex; gap:6px; margin-bottom:4px;">
+                            <span class="option-tag" style="color:#5A7D9A; background:#f0f7ff">${item.price}</span>
+                            <span class="option-tag">${item.tag}</span>
+                        </div>
+                        <div class="option-name">${item.name}</div>
+                        <div class="option-desc" style="font-size:12px; color:#666">✨ ${item.special}<br>${item.desc}</div>
+                    </div>
+                    <div class="option-arrow">→</div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+        document.getElementById('detailModal').classList.add('open');
+    }
+</script>
+</body>
+</html>
